@@ -1,7 +1,240 @@
 ﻿@page "/"
+@using GreenThumb.Client.Models
 
-<h1>Hello, world!</h1>
+<div class="row">
+    <div class="col-8">
+        @*grid stuff*@
+        <table style="background-color: #80c44d;">
+            <tbody style="border-radius: 5px; background-color: #80c44d;">
+                @for (int i = 0; i < GridHeight; i++)
+                {
+                    <tr>
+                        @for (int j = 0; j < GridWidth; j++)
+                        {
+                            var y = i;
+                            var x =j;
+                            if(items[y,x] == null)
+                            {
+                                items[y,x] = new GridItem{
+                                    Y = y,
+                                    X = j,
+                                    Text = "",
+                                    ColorString = " "
+                                };
+                            }
+                            
+                            string classStr = "";
 
-Welcome to your new app.
+                            if(items[y,x].GridType != GridType.GRASS)
+                            {
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+                                if (TopRightClear(y,x))
+                                {
+                                    classStr = $"{classStr}border-top-right ";
+                                }
+
+                                if (TopLeftClear(y,x))
+                                {
+                                    classStr = $"{classStr}border-top-left ";
+                                }
+
+                                if (BottomRightClear(y,x))
+                                {
+                                    classStr = $"{classStr}border-bottom-right ";
+                                }
+
+                                if (BottomLeftClear(y,x))
+                                {
+                                    classStr = $"{classStr}border-bottom-left ";
+                                }
+                            }
+
+
+                            <td class="@classStr"
+                                style="@(items[y,x].ColorString)"
+                                @onmousedown="@(args => Color(y,x))"
+                                @onmouseover="@(args => DragColor(y,x))"
+                                @onmouseup="@(args => MouseUp(y,x))">
+
+                                @items[y,x].Text
+                            </td>
+                        }
+                    </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+    <div class="col-4 right-menu shadow-lg" style="height: 90vh">
+
+        @if (isBuilding)
+        {
+            <h3>Build</h3>
+            <div class="row align-items-center" style="margin-top: 25px;">
+                <div class="col-sm d-flex justify-content-center">
+                    <RadzenButton Style="width: 50px;
+                                        height: 50px;
+                                        border-radius: 3px;
+                                        background: #9b7653;"
+                                  Click="@(args => SwitchSelection(GridType.BUILDING))">
+                    </RadzenButton>
+                </div>
+                <div class="col-sm d-flex justify-content-center">
+                    <RadzenButton Style="width: 50px; 
+                                         height: 50px; 
+                                         border-radius: 3px; 
+                                         background: red;"
+                                  Click="@(args => SwitchSelection(GridType.TOMATO))">
+
+                    </RadzenButton>
+                </div>
+                <div class="col-sm d-flex justify-content-center">
+                    <RadzenButton Style="width: 50px;
+                                         height: 50px; 
+                                         border-radius: 3px;
+                                         background: pink"
+                                  Click="@(args => SwitchSelection(GridType.Rose))">
+
+                    </RadzenButton>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                <div class="col-sm ">
+                    <div class="btn-primary">Goodbye</div>
+                </div>
+                <div class="col-sm">
+                    <button class="btn-primary"></button>
+                </div>
+                <div class="col-sm">
+                    <button class="btn-primary"></button>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code  {
+    const short GridHeight = 15;
+    const short GridWidth = 24;
+
+    private GridItem[,] items = new GridItem[GridHeight, GridWidth];
+
+    private bool isBuilding = true;
+    private bool isMouseDown = false;
+
+    private (int y, int x) liftedCoord = (y:0,x:0);
+
+    private GridType selectedGridType = GridType.BUILDING;
+
+    public void SwitchMenu(int x)
+    {
+        isBuilding = !isBuilding;
+    }
+
+    public void SwitchSelection(GridType gridType)
+    {
+        selectedGridType = gridType;
+    }
+
+    public async void Color(int y, int x)
+    {
+        SetItemColor(y, x);
+        this.StateHasChanged();
+        isMouseDown = true;
+        @* liftedCoord = (y,x); *@
+        await Task.CompletedTask;
+
+    }
+
+    private void SetItemColor(int y, int x)
+    {
+        switch (selectedGridType)
+        {
+            case GridType.BUILDING:
+                items[y, x].ColorString = "background: #9b7653; animation: createBox .25s;";
+                items[y, x].Text = "5s";
+                break;
+            case GridType.TOMATO:
+                items[y, x].ColorString = "background: red; animation: createBox .25s;";
+                break;
+            case GridType.Rose:
+                items[y, x].ColorString = "background: pink; animation: createBox .25s;";
+                break;
+            default:
+                throw new Exception("Invalid building type");
+        }
+        items[y,x].GridType = selectedGridType;
+    }
+
+    private void DrawSquare(int y, int x)
+    {
+        (int y, int x) start;
+        (int y, int x) end;
+
+        if (y > this.liftedCoord.y)
+        {
+            start.y = this.liftedCoord.y;
+            end.y = y;
+        }
+        else {
+            start.y = y;
+            end.y = this.liftedCoord.y;
+        }   
+
+        if (x > this.liftedCoord.x)
+        {
+            start.x = this.liftedCoord.x;
+            end.x = x;
+        }
+        else {
+            start.x = x;
+            end.x = this.liftedCoord.x;
+        }
+
+        for (int i = start.y; i <= end.y; i++)
+        {
+            for (int j = start.x; j <= end.x; j++)
+            {
+                SetItemColor(i,j);  
+            }
+        }
+    }
+
+    public async void DragColor(int y, int x)
+    {
+        if (isMouseDown)
+        {
+            SetItemColor(y,x);
+            this.StateHasChanged();
+        }
+
+        await Task.CompletedTask;
+    }
+
+    public async void MouseUp(int y, int x)
+    {
+        isMouseDown = false;
+        @* DrawSquare(y,x);
+        this.StateHasChanged(); *@
+        await Task.CompletedTask;
+    }
+
+    private bool BottomRightClear (int y, int x) => !(y + 1 >= GridHeight ) &&
+        !(x+1 >= GridWidth) && (items[y+1,x].GridType == GridType.GRASS)
+        &&(items[y,x+1].GridType == GridType.GRASS);
+
+    private bool BottomLeftClear (int y, int x) => !(y + 1 >= GridHeight ) &&
+        !(x-1 < 0) && (items[y+1,x].GridType == GridType.GRASS)
+        &&(items[y,x-1].GridType == GridType.GRASS);
+    
+    private bool TopRightClear (int y, int x) => !(y - 1 < 0 ) &&
+        !(x+1 >= GridWidth) && (items[y-1,x].GridType == GridType.GRASS)
+        &&(items[y,x+1].GridType == GridType.GRASS);
+
+    private bool TopLeftClear (int y, int x) => !(y - 1 < 0) &&
+        !(x - 1 < 0) && (items[y-1,x].GridType == GridType.GRASS)
+        &&(items[y,x-1].GridType == GridType.GRASS);
+
+}
